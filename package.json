@@ -3,7 +3,7 @@
     "version": "0.0.0",
     "private": true,
     "scripts": {
-        "dev": "next dev --turbopack",
+        "dev": "concurrently \"next dev --turbopack\" \"npx convex dev\"",
         "build": "next build",
         "start": "next start"
     },
@@ -12,6 +12,7 @@
         "@tailwindcss/typography": "^0.5.19",
         "@untitledui/file-icons": "^0.0.8",
         "@untitledui/icons": "^0.0.19",
+        "convex": "^1.31.5",
         "input-otp": "^1.4.2",
         "motion": "^12.23.26",
         "next": "^16.0.10",
@@ -32,6 +33,7 @@
         "@types/node": "^24.10.4",
         "@types/react": "^19.2.7",
         "@types/react-dom": "^19.2.3",
+        "concurrently": "^9.1.0",
         "postcss": "^8.5.6",
         "postcss-loader": "^8.2.0",
         "prettier": "^3.7.4",
