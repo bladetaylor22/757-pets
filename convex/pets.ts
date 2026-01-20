@@ -134,6 +134,18 @@ export const getPetsByOwner = query({
 
 /**
  * Get all members of a pet
+ * 
+ * Returns both primary owner and additional members:
+ * - Primary owner: Derived from pet.ownerUserId, marked with isPrimaryOwner: true
+ * - Additional members: From petMembers table, marked with isPrimaryOwner: false
+ * 
+ * Roles:
+ * - Primary owner: Full control (edit, delete, transfer)
+ * - Co-owner (petMembers role "owner"): Can edit but not delete/transfer
+ * - Guardian: Can edit but not delete/transfer
+ * - Viewer: Read-only access
+ * 
+ * Note: Filters out any redundant petMembers entries for primary owner (backward compatibility)
  */
 export const getPetMembers = query({
   args: { petId: v.id("pets") },
@@ -166,11 +178,15 @@ export const getPetMembers = query({
       });
     }
 
-    // Get all members
-    const members = await ctx.db
+    // Get all members, excluding primary owner if they have a petMembers entry
+    // (backward compatibility: old pets may have redundant primary owner entries)
+    const allMembers = await ctx.db
       .query("petMembers")
       .withIndex("by_petId", (q) => q.eq("petId", args.petId))
       .collect();
+
+    // Filter out primary owner entries to prevent duplicates
+    const members = allMembers.filter((m) => m.userId !== pet.ownerUserId);
 
     // Return members with primary owner included
     return [
@@ -251,6 +267,12 @@ export const getPetFiles = query({
 
 /**
  * Create new pet profile
+ * 
+ * Ownership model:
+ * - Primary owner is stored in pet.ownerUserId (single source of truth)
+ * - Primary owner has full control: edit, delete, transfer ownership
+ * - Additional members (co-owners, guardians, viewers) are stored in petMembers table
+ * - Primary owner is NOT stored in petMembers table to avoid redundancy
  */
 export const createPet = mutation({
   args: {
@@ -411,13 +433,8 @@ export const createPet = mutation({
     // Insert pet document
     const petId = await ctx.db.insert("pets", petData);
 
-    // Create initial petMembers entry for primary owner (role: "owner")
-    await ctx.db.insert("petMembers", {
-      petId,
-      userId: ownerUserId,
-      role: "owner",
-      createdAt: now,
-    });
+    // Note: Primary owner is tracked via pet.ownerUserId, not petMembers table
+    // This avoids redundant data and ensures single source of truth
 
     // Return created pet document
     return await ctx.db.get(petId);
@@ -427,6 +444,9 @@ export const createPet = mutation({
 /**
  * Internal mutation to create pet without authentication
  * Used for seeding test data
+ * 
+ * Ownership model: Same as createPet - primary owner stored in pet.ownerUserId,
+ * not in petMembers table to avoid redundancy.
  */
 export const createPetInternal = internalMutation({
   args: {
@@ -581,13 +601,8 @@ export const createPetInternal = internalMutation({
     // Insert pet document
     const petId = await ctx.db.insert("pets", petData);
 
-    // Create initial petMembers entry for primary owner (role: "owner")
-    await ctx.db.insert("petMembers", {
-      petId,
-      userId: args.ownerUserId,
-      role: "owner",
-      createdAt: now,
-    });
+    // Note: Primary owner is tracked via pet.ownerUserId, not petMembers table
+    // This avoids redundant data and ensures single source of truth
 
     // Return created pet document
     return await ctx.db.get(petId);
@@ -744,7 +759,9 @@ export const updatePet = mutation({
 
 /**
  * Soft delete (archive) pet
- * Only primary owner can delete
+ * 
+ * Authorization: Only primary owner (pet.ownerUserId) can delete a pet.
+ * Co-owners and guardians cannot delete, even if they have role "owner" in petMembers.
  */
 export const deletePet = mutation({
   args: { petId: v.id("pets") },
@@ -806,6 +823,109 @@ export const deletePetInternal = internalMutation({
 });
 
 /**
+ * Transfer pet ownership to another user
+ * Only the current primary owner can transfer ownership.
+ * 
+ * Ownership model:
+ * - Primary owner: Stored in pet.ownerUserId, has full control including delete/transfer
+ * - Co-owner: Stored in petMembers with role "owner", can edit but not delete/transfer
+ * - Guardian: Stored in petMembers with role "guardian", can edit but not delete/transfer
+ * - Viewer: Stored in petMembers with role "viewer", read-only access
+ */
+export const transferPetOwnership = mutation({
+  args: {
+    petId: v.id("pets"),
+    newOwnerUserId: v.string(),
+    keepOldOwnerAsMember: v.optional(v.boolean()), // If true, old owner becomes co-owner
+  },
+  handler: async (ctx, args) => {
+    // Require authentication
+    const currentUserId = await requireCurrentUser(ctx);
+
+    // Load pet
+    const pet = await ctx.db.get(args.petId);
+    if (!pet) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "Pet not found",
+      });
+    }
+
+    // Verify current user is primary owner (only primary owner can transfer)
+    if (pet.ownerUserId !== currentUserId) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Only the primary owner can transfer ownership",
+      });
+    }
+
+    // Prevent transferring to self
+    if (pet.ownerUserId === args.newOwnerUserId) {
+      throw new ConvexError({
+        code: "INVALID_OPERATION",
+        message: "Cannot transfer ownership to yourself",
+      });
+    }
+
+    const oldOwnerUserId = pet.ownerUserId;
+    const now = Date.now();
+
+    // Handle petMembers entries for new owner
+    // If new owner has existing petMembers entry, remove it (they're now primary)
+    const newOwnerMembership = await ctx.db
+      .query("petMembers")
+      .withIndex("by_petId_and_userId", (q) =>
+        q.eq("petId", args.petId).eq("userId", args.newOwnerUserId)
+      )
+      .first();
+
+    if (newOwnerMembership) {
+      await ctx.db.delete(newOwnerMembership._id);
+    }
+
+    // Update pet.ownerUserId to new owner
+    await ctx.db.patch(args.petId, {
+      ownerUserId: args.newOwnerUserId,
+      updatedAt: now,
+    });
+
+    // Handle old owner's petMembers entry
+    const oldOwnerMembership = await ctx.db
+      .query("petMembers")
+      .withIndex("by_petId_and_userId", (q) =>
+        q.eq("petId", args.petId).eq("userId", oldOwnerUserId)
+      )
+      .first();
+
+    if (args.keepOldOwnerAsMember === true) {
+      // Old owner should become co-owner
+      if (oldOwnerMembership) {
+        // Update existing entry to co-owner role
+        await ctx.db.patch(oldOwnerMembership._id, {
+          role: "owner", // Co-owner role
+        });
+      } else {
+        // Create new petMembers entry for old owner as co-owner
+        await ctx.db.insert("petMembers", {
+          petId: args.petId,
+          userId: oldOwnerUserId,
+          role: "owner", // Co-owner role
+          createdAt: now,
+        });
+      }
+    } else {
+      // Remove old owner's petMembers entry if it exists
+      if (oldOwnerMembership) {
+        await ctx.db.delete(oldOwnerMembership._id);
+      }
+    }
+
+    // Return updated pet document
+    return await ctx.db.get(args.petId);
+  },
+});
+
+/**
  * Internal query to get pets by owner ID (no auth required)
  * Used for cleanup operations
  */
@@ -849,7 +969,13 @@ export const getPetsByOwnerIdInternal = internalQuery({
 });
 
 /**
- * Add co-owner/guardian/viewer
+ * Add co-owner/guardian/viewer to a pet
+ * 
+ * Note: Primary owner is tracked via pet.ownerUserId, not petMembers table.
+ * This mutation adds additional members with roles:
+ * - "owner": Co-owner (can edit but not delete/transfer)
+ * - "guardian": Can edit but not delete/transfer
+ * - "viewer": Read-only access
  */
 export const addPetMember = mutation({
   args: {
@@ -874,6 +1000,23 @@ export const addPetMember = mutation({
       });
     }
 
+    // Load pet to check primary owner
+    const pet = await ctx.db.get(args.petId);
+    if (!pet) {
+      throw new ConvexError({
+        code: "NOT_FOUND",
+        message: "Pet not found",
+      });
+    }
+
+    // Prevent adding primary owner as member (they're tracked via pet.ownerUserId)
+    if (pet.ownerUserId === args.userId) {
+      throw new ConvexError({
+        code: "INVALID_OPERATION",
+        message: "Primary owner is already a member. Use transferPetOwnership to change primary owner.",
+      });
+    }
+
     // Check if membership already exists
     const existing = await ctx.db
       .query("petMembers")
@@ -886,22 +1029,6 @@ export const addPetMember = mutation({
       throw new ConvexError({
         code: "DUPLICATE",
         message: "User is already a member of this pet",
-      });
-    }
-
-    // Check if user is primary owner (they don't need a membership entry)
-    const pet = await ctx.db.get(args.petId);
-    if (!pet) {
-      throw new ConvexError({
-        code: "NOT_FOUND",
-        message: "Pet not found",
-      });
-    }
-
-    if (pet.ownerUserId === args.userId) {
-      throw new ConvexError({
-        code: "INVALID_OPERATION",
-        message: "Primary owner is already a member",
       });
     }
 
@@ -918,8 +1045,10 @@ export const addPetMember = mutation({
 });
 
 /**
- * Remove member
- * Cannot remove primary owner
+ * Remove member from pet
+ * 
+ * Authorization: Cannot remove primary owner (use transferPetOwnership instead).
+ * Primary owner is tracked via pet.ownerUserId, not petMembers table.
  */
 export const removePetMember = mutation({
   args: {
@@ -978,6 +1107,9 @@ export const removePetMember = mutation({
 
 /**
  * Update member role
+ * 
+ * Note: Cannot update primary owner's role (they're tracked via pet.ownerUserId).
+ * Use transferPetOwnership to change primary owner.
  */
 export const updatePetMemberRole = mutation({
   args: {
