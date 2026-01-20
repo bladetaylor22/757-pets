@@ -11,14 +11,17 @@ if (!convexUrl) {
     throw new Error("NEXT_PUBLIC_CONVEX_URL is not set");
 }
 
+// Type assertion: we've already checked convexUrl is defined above
+const CONVEX_URL: string = convexUrl;
+
 export function ConvexClientProvider({
     children,
     initialToken,
 }: PropsWithChildren<{ initialToken?: string | null }>) {
     // Create Convex client instance
     const convex = useMemo(
-        () => new ConvexReactClient(convexUrl),
-        [convexUrl]
+        () => new ConvexReactClient(CONVEX_URL),
+        []
     );
 
     return (
