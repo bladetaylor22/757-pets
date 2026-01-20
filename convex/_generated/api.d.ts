@@ -10,7 +10,12 @@
 
 import type * as auth from "../auth.js";
 import type * as emails from "../emails.js";
+import type * as files from "../files.js";
 import type * as http from "../http.js";
+import type * as pets from "../pets.js";
+import type * as pets_files from "../pets/files.js";
+import type * as pets_utils from "../pets/utils.js";
+import type * as pets_vaccines from "../pets/vaccines.js";
 
 import type {
   ApiFromModules,
@@ -21,7 +26,12 @@ import type {
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   emails: typeof emails;
+  files: typeof files;
   http: typeof http;
+  pets: typeof pets;
+  "pets/files": typeof pets_files;
+  "pets/utils": typeof pets_utils;
+  "pets/vaccines": typeof pets_vaccines;
 }>;
 
 /**

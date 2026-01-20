@@ -4,15 +4,114 @@ import { useAuth } from "@/hooks/use-auth";
 import { signOut } from "@/lib/auth-client";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/base/buttons/button";
 import { useState } from "react";
 
-export default function TestAuthPage() {
-    const { session, user, isAuthenticated, isLoading } = useAuth();
-    const convexUser = useQuery(
-        api.auth.getCurrentUser,
-        isAuthenticated ? {} : "skip"
+function PetProfilesSection() {
+    const { isAuthenticated } = useAuth();
+    const pets = useQuery(api.pets.getPetsByOwner, isAuthenticated ? {} : "skip");
+
+    if (pets === undefined) {
+        return (
+            <div className="rounded-lg bg-primary p-4">
+                <h2 className="mb-2 font-semibold">Pet Profiles</h2>
+                <div className="text-sm text-muted-foreground">Loading pets...</div>
+            </div>
+        );
+    }
+
+    if (pets.length === 0) {
+        return (
+            <div className="rounded-lg bg-primary p-4">
+                <h2 className="mb-2 font-semibold">Pet Profiles</h2>
+                <div className="text-sm text-muted-foreground">
+                    No pets found.
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="rounded-lg bg-primary p-4">
+            <h2 className="mb-2 font-semibold">Pet Profiles ({pets.length})</h2>
+            <div className="space-y-3">
+                {pets.map((pet) => (
+                    <div
+                        key={pet._id}
+                        className="rounded border border-secondary bg-secondary p-3"
+                    >
+                        <div className="flex items-start gap-3">
+                            {pet.primaryPhotoFileId && (
+                                <PetPhoto fileId={pet.primaryPhotoFileId} />
+                            )}
+                            <div className="flex-1 space-y-1 text-sm">
+                                <div className="font-semibold">{pet.name}</div>
+                                <div className="space-y-0.5 text-xs text-muted-foreground">
+                                    <div>
+                                        <strong>Species:</strong> {pet.species}
+                                    </div>
+                                    {pet.breedPrimary && (
+                                        <div>
+                                            <strong>Breed:</strong> {pet.breedPrimary}
+                                            {pet.breedSecondary && ` / ${pet.breedSecondary}`}
+                                        </div>
+                                    )}
+                                    {pet.size && (
+                                        <div>
+                                            <strong>Size:</strong> {pet.size.toUpperCase()}
+                                        </div>
+                                    )}
+                                    {pet.colorPrimary && (
+                                        <div>
+                                            <strong>Color:</strong> {pet.colorPrimary}
+                                            {pet.colorSecondary && ` / ${pet.colorSecondary}`}
+                                        </div>
+                                    )}
+                                    {pet.approxAgeYears && (
+                                        <div>
+                                            <strong>Age:</strong> ~{pet.approxAgeYears} years
+                                        </div>
+                                    )}
+                                    <div>
+                                        <strong>Status:</strong> {pet.status}
+                                    </div>
+                                    <div>
+                                        <strong>Slug:</strong> {pet.slug}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
     );
+}
+
+function PetPhoto({ fileId }: { fileId: Id<"_storage"> }) {
+    const fileUrl = useQuery(
+        api.files.getFileUrl,
+        { storageId: fileId }
+    );
+
+    if (!fileUrl) {
+        return (
+            <div className="h-16 w-16 shrink-0 rounded border border-secondary bg-muted" />
+        );
+    }
+
+    return (
+        <img
+            src={fileUrl}
+            alt="Pet photo"
+            className="h-16 w-16 shrink-0 rounded border border-secondary object-cover"
+        />
+    );
+}
+
+export default function TestAuthPage() {
+    const { session, user: convexUser, isAuthenticated, isLoading } = useAuth();
     const sendTestEmail = useMutation(api.emails.sendTestEmail);
     const [emailStatus, setEmailStatus] = useState<{
         loading: boolean;
@@ -56,11 +155,11 @@ export default function TestAuthPage() {
                         </div>
                     )}
 
-                    {user && (
+                    {session?.user && (
                         <div className="rounded-lg bg-primary p-4">
-                            <h2 className="mb-2 font-semibold">Better Auth User</h2>
+                            <h2 className="mb-2 font-semibold">Better Auth Session User</h2>
                             <pre className="overflow-auto text-xs">
-                                {JSON.stringify(user, null, 2)}
+                                {JSON.stringify(session.user, null, 2)}
                             </pre>
                         </div>
                     )}
@@ -83,6 +182,10 @@ export default function TestAuthPage() {
                                 {JSON.stringify(convexUser, null, 2)}
                             </pre>
                         </div>
+                    )}
+
+                    {isAuthenticated && convexUser && (
+                        <PetProfilesSection />
                     )}
 
                     {!isAuthenticated && (
