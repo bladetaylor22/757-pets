@@ -1,6 +1,6 @@
 import { createClient, type GenericCtx } from "@convex-dev/better-auth";
 import { convex } from "@convex-dev/better-auth/plugins";
-import { components } from "./_generated/api";
+import { components, internal } from "./_generated/api";
 import { DataModel } from "./_generated/dataModel";
 import { query, mutation } from "./_generated/server";
 import { betterAuth } from "better-auth";
@@ -25,7 +25,42 @@ export const createAuth = (ctx: GenericCtx<DataModel>) => {
         // Configure email/password authentication
         emailAndPassword: {
             enabled: true,
-            requireEmailVerification: false, // Set to true after email setup
+            requireEmailVerification: false, // Set to true after email setup (Phase 2)
+            sendResetPassword: async ({ user, url, token }, _request) => {
+                // Send email without blocking (avoid timing attacks)
+                // ctx is ActionCtx when called from HTTP actions, so runMutation is available
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (ctx as any)
+                    .runMutation(internal.emails.sendResetPasswordInternal, {
+                        to: user.email,
+                        url,
+                        token,
+                        name: user.name ?? undefined,
+                    })
+                    .catch((error: unknown) => {
+                        console.error("Failed to send password reset email:", error);
+                    });
+            },
+        },
+        // Configure email verification
+        emailVerification: {
+            sendOnSignUp: true, // Automatically send verification email on signup
+            autoSignInAfterVerification: true, // Sign user in after verification
+            sendVerificationEmail: async ({ user, url, token }, _request) => {
+                // Send email without blocking (avoid timing attacks)
+                // ctx is ActionCtx when called from HTTP actions, so runMutation is available
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                (ctx as any)
+                    .runMutation(internal.emails.sendVerificationEmailInternal, {
+                        to: user.email,
+                        url,
+                        token,
+                        name: user.name ?? undefined,
+                    })
+                    .catch((error: unknown) => {
+                        console.error("Failed to send verification email:", error);
+                    });
+            },
         },
         plugins: [
             // The Convex plugin is required for Convex compatibility

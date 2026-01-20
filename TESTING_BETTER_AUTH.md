@@ -18,6 +18,8 @@ npx convex env list
 Should show:
 - `BETTER_AUTH_SECRET` - Should be set
 - `SITE_URL` - Should be set to `http://localhost:3000` (or your production URL)
+- `RESEND_API_KEY` - Resend API key from dashboard (required for email sending)
+- `RESEND_FROM` - Sender identity, set to `"757 PETS <hello@757pets.com>"` (required for email sending)
 
 ### 2. Verify Convex Types Generated
 
@@ -202,6 +204,22 @@ npx convex env set SITE_URL=http://localhost:3000
 3. Restart `convex dev`
 4. Wait for type generation
 
+### Issue: "RESEND_FROM environment variable is not set" Error
+
+**Solution:** Set RESEND_FROM in Convex:
+```bash
+npx convex env set RESEND_FROM="757 PETS <hello@757pets.com>"
+```
+
+### Issue: Emails Not Sending
+
+**Solution:**
+- Verify `RESEND_API_KEY` is set correctly in Convex
+- Check Resend dashboard for API key status
+- Verify `testMode` setting matches your use case
+- If `testMode: true`, only test addresses (e.g., `delivered@resend.dev`) will work
+- Check Resend dashboard logs for delivery status
+
 ## Production Testing
 
 Before deploying to production:
@@ -223,12 +241,51 @@ Before deploying to production:
 
 6. ✅ Test session persistence across browser restarts
 
+## Email Configuration (Resend)
+
+### Setting Up Resend
+
+1. **Get Resend API Key:**
+   - Sign up at [resend.com](https://resend.com)
+   - Navigate to API Keys in dashboard
+   - Create a new API key
+   - Copy the key
+
+2. **Set Environment Variables in Convex:**
+   ```bash
+   npx convex env set RESEND_API_KEY=re_xxxxxxxxx
+   npx convex env set RESEND_FROM="757 PETS <hello@757pets.com>"
+   ```
+
+3. **Verify Domain (Production):**
+   - Add and verify your domain (`757pets.com`) in Resend dashboard
+   - Required for sending emails to real addresses (not test addresses)
+
+4. **Test Mode:**
+   - By default, `testMode: true` is enabled in `convex/emails.ts`
+   - This only allows sending to test addresses (e.g., `delivered@resend.dev`)
+   - Set `testMode: false` when ready for production
+
+### Testing Email Flows
+
+**Email Verification:**
+- Sign up a new user
+- Check Resend dashboard for sent verification email
+- Click verification link to verify email
+- User should be automatically signed in after verification
+
+**Password Reset:**
+- Request password reset from login page
+- Check Resend dashboard for sent reset email
+- Click reset link to set new password
+
 ## Next Steps
 
 After verifying everything works:
 
-1. Add email verification (optional)
-2. Add password reset flow
+1. ✅ Email verification (configured and working)
+2. ✅ Password reset flow (configured and working)
 3. Add OAuth providers (Google, GitHub, etc.)
 4. Add protected route examples
 5. Add user profile management
+6. (Optional) Set up Resend webhooks for email status tracking

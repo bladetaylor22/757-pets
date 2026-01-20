@@ -2,9 +2,10 @@
 
 import { useAuth } from "@/hooks/use-auth";
 import { signOut } from "@/lib/auth-client";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/base/buttons/button";
+import { useState } from "react";
 
 export default function TestAuthPage() {
     const { session, user, isAuthenticated, isLoading } = useAuth();
@@ -12,6 +13,12 @@ export default function TestAuthPage() {
         api.auth.getCurrentUser,
         isAuthenticated ? {} : "skip"
     );
+    const sendTestEmail = useMutation(api.emails.sendTestEmail);
+    const [emailStatus, setEmailStatus] = useState<{
+        loading: boolean;
+        success: boolean;
+        error: string | null;
+    }>({ loading: false, success: false, error: null });
 
     if (isLoading) {
         return (
@@ -89,18 +96,78 @@ export default function TestAuthPage() {
                     )}
 
                     {isAuthenticated && (
-                        <div className="flex gap-4">
-                            <Button
-                                onClick={async () => {
-                                    await signOut();
-                                    window.location.href = "/";
-                                }}
-                            >
-                                Sign Out
-                            </Button>
-                            <Button href="/sign-up" color="secondary">
-                                Go to Sign Up
-                            </Button>
+                        <div className="space-y-4">
+                            <div className="flex gap-4">
+                                <Button
+                                    onClick={async () => {
+                                        await signOut();
+                                        window.location.href = "/";
+                                    }}
+                                >
+                                    Sign Out
+                                </Button>
+                                <Button href="/sign-up" color="secondary">
+                                    Go to Sign Up
+                                </Button>
+                            </div>
+
+                            <div className="rounded-lg border border-primary p-4">
+                                <h3 className="mb-2 font-semibold">Email Testing</h3>
+                                <p className="mb-4 text-sm text-muted-foreground">
+                                    Send a test email to your account email address:{" "}
+                                    <strong>{convexUser?.email}</strong>
+                                </p>
+                                <Button
+                                    onClick={async () => {
+                                        setEmailStatus({ loading: true, success: false, error: null });
+                                        try {
+                                            const result = await sendTestEmail();
+                                            setEmailStatus({
+                                                loading: false,
+                                                success: true,
+                                                error: null,
+                                            });
+                                            console.log("Email result:", result);
+                                            setTimeout(() => {
+                                                setEmailStatus({
+                                                    loading: false,
+                                                    success: false,
+                                                    error: null,
+                                                });
+                                            }, 5000);
+                                        } catch (error) {
+                                            setEmailStatus({
+                                                loading: false,
+                                                success: false,
+                                                error:
+                                                    error instanceof Error
+                                                        ? error.message
+                                                        : "Failed to send email",
+                                            });
+                                        }
+                                    }}
+                                    disabled={emailStatus.loading}
+                                    color="primary"
+                                >
+                                    {emailStatus.loading
+                                        ? "Sending..."
+                                        : "Send Test Email"}
+                                </Button>
+                                {emailStatus.success && (
+                                    <div className="mt-2 rounded bg-green-50 p-2 text-sm text-green-800">
+                                        ✅ Test email queued successfully! Check your inbox and Resend dashboard.
+                                        <br />
+                                        <span className="text-xs">
+                                            If you don&apos;t receive it, check: 1) Resend dashboard for delivery status, 2) Spam folder, 3) Domain verification in Resend
+                                        </span>
+                                    </div>
+                                )}
+                                {emailStatus.error && (
+                                    <div className="mt-2 rounded bg-red-50 p-2 text-sm text-red-800">
+                                        ❌ Error: {emailStatus.error}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
                 </div>
