@@ -2,24 +2,23 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signUp } from "@/lib/auth-client";
-import { SignupSplitImage } from "@/components/shared-assets/signup/signup-split-image";
+import { signIn } from "@/lib/auth-client";
+import { LoginSimpleMinimal } from "@/components/shared-assets/login/login-simple-minimal";
 import { handleAuthError } from "@/lib/auth-errors";
 
-export default function SignUpPage() {
+export default function LoginPage() {
     const router = useRouter();
     const [error, setError] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    const handleSignUp = async (email: string, password: string, name: string) => {
+    const handleSignIn = async (email: string, password: string) => {
         setIsLoading(true);
         setError(null);
 
         try {
-            const result = await signUp.email({
+            const result = await signIn.email({
                 email,
                 password,
-                name,
             });
 
             if (result.error) {
@@ -27,7 +26,7 @@ export default function SignUpPage() {
                 return;
             }
 
-            // Redirect after successful sign-up
+            // Redirect after successful sign-in
             router.push("/");
         } catch (err) {
             setError(handleAuthError(err));
@@ -37,8 +36,8 @@ export default function SignUpPage() {
     };
 
     return (
-        <SignupSplitImage
-            onSignUp={handleSignUp}
+        <LoginSimpleMinimal
+            onSignIn={handleSignIn}
             error={error}
             isLoading={isLoading}
         />

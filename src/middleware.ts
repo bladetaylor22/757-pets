@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-export function middleware(request: NextRequest) {
+export function middleware(_request: NextRequest) {
     // Add any route protection logic here
     // Better Auth handles auth via cookies, so middleware is optional
     return NextResponse.next();

@@ -8,7 +8,13 @@ import { Input } from "@/components/base/input/input";
 import { UntitledLogo } from "@/components/foundations/logo/untitledui-logo";
 import { UntitledLogoMinimal } from "@/components/foundations/logo/untitledui-logo-minimal";
 
-export const SignupSplitImage = () => {
+interface SignupSplitImageProps {
+    onSignUp?: (email: string, password: string, name: string) => Promise<void>;
+    error?: string | null;
+    isLoading?: boolean;
+}
+
+export const SignupSplitImage = ({ onSignUp, error, isLoading }: SignupSplitImageProps = {}) => {
     return (
         <section className="grid min-h-screen grid-cols-1 bg-primary lg:grid-cols-2">
             <div className="flex flex-col bg-primary">
@@ -27,10 +33,18 @@ export const SignupSplitImage = () => {
                         </div>
 
                         <Form
-                            onSubmit={(e) => {
+                            onSubmit={async (e) => {
                                 e.preventDefault();
-                                const data = Object.fromEntries(new FormData(e.currentTarget));
-                                console.log("Form data:", data);
+                                const formData = new FormData(e.currentTarget);
+                                const name = formData.get("name") as string;
+                                const email = formData.get("email") as string;
+                                const password = formData.get("password") as string;
+
+                                if (onSignUp) {
+                                    await onSignUp(email, password, name);
+                                } else {
+                                    console.log("Form data:", { name, email, password });
+                                }
                             }}
                             className="flex flex-col gap-6"
                         >
@@ -50,11 +64,17 @@ export const SignupSplitImage = () => {
                                 />
                             </div>
 
+                            {error && (
+                                <div className="rounded-lg bg-red-50 p-4 text-sm text-red-600">
+                                    {error}
+                                </div>
+                            )}
+
                             <div className="flex flex-col gap-4">
-                                <Button type="submit" size="lg">
-                                    Get started
+                                <Button type="submit" size="lg" isDisabled={isLoading}>
+                                    {isLoading ? "Creating account..." : "Get started"}
                                 </Button>
-                                <SocialButton social="google" theme="color">
+                                <SocialButton social="google" theme="color" disabled={isLoading}>
                                     Sign up with Google
                                 </SocialButton>
                             </div>
