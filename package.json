@@ -10,10 +10,12 @@
         "lint:fix": "eslint . --fix"
     },
     "dependencies": {
+        "@convex-dev/better-auth": "^0.10.10",
         "@tailwindcss/postcss": "^4.1.18",
         "@tailwindcss/typography": "^0.5.19",
         "@untitledui/file-icons": "^0.0.8",
         "@untitledui/icons": "^0.0.19",
+        "better-auth": "^1.4.9",
         "convex": "^1.31.5",
         "input-otp": "^1.4.2",
         "motion": "^12.23.26",
