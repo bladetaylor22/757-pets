@@ -5,6 +5,8 @@ import dynamic from "next/dynamic";
 import type { MapMarker } from "@/components/application/map/types";
 import type { TileStyle } from "@/components/application/map/map";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
+import { Button } from "@/components/base/buttons/button";
+import { useGeolocation } from "@/hooks/use-geolocation";
 
 // Dynamically import Map component to avoid SSR issues
 const Map = dynamic(() => import("@/components/application/map/map").then((mod) => ({ default: mod.Map })), {
@@ -49,6 +51,10 @@ const hamptonRoadsCenter: [number, number] = [36.8, -76.3];
 
 export default function TestMapPage() {
     const [tileStyle, setTileStyle] = useState<TileStyle>("positron");
+    const { location, loading, error, permissionState, requestLocation } = useGeolocation();
+    
+    // Only show location button if permission is not granted (prompt or denied)
+    const showLocationButton = permissionState === "prompt" || permissionState === "denied";
 
     return (
         <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
@@ -60,23 +66,50 @@ export default function TestMapPage() {
                             Testing Leaflet map integration with sample locations across Hampton Roads cities.
                         </p>
                     </div>
-                    <div className="flex flex-col gap-2">
-                        <label className="text-sm font-medium text-secondary">Map Style</label>
-                        <ButtonGroup
-                            selectedKeys={new Set([tileStyle])}
-                            onSelectionChange={(keys) => {
-                                const selected = Array.from(keys)[0] as TileStyle;
-                                if (selected) setTileStyle(selected);
-                            }}
-                        >
-                            <ButtonGroupItem id="positron">Positron</ButtonGroupItem>
-                            <ButtonGroupItem id="dark-matter">Dark Matter</ButtonGroupItem>
-                            <ButtonGroupItem id="voyager">Voyager</ButtonGroupItem>
-                        </ButtonGroup>
+                    <div className="flex items-end gap-4">
+                        {permissionState !== "unsupported" && showLocationButton && (
+                            <div className="flex flex-col gap-2">
+                                <label className="text-sm font-medium text-secondary">Location</label>
+                                <Button
+                                    onClick={requestLocation}
+                                    disabled={loading}
+                                    color="primary"
+                                    size="sm"
+                                >
+                                    {loading ? "Getting Location..." : "Get My Location"}
+                                </Button>
+                            </div>
+                        )}
+                        <div className="flex flex-col gap-2">
+                            <label className="text-sm font-medium text-secondary">Map Style</label>
+                            <ButtonGroup
+                                selectedKeys={new Set([tileStyle])}
+                                onSelectionChange={(keys) => {
+                                    const selected = Array.from(keys)[0] as TileStyle;
+                                    if (selected) setTileStyle(selected);
+                                }}
+                            >
+                                <ButtonGroupItem id="positron">Positron</ButtonGroupItem>
+                                <ButtonGroupItem id="dark-matter">Dark Matter</ButtonGroupItem>
+                                <ButtonGroupItem id="voyager">Voyager</ButtonGroupItem>
+                            </ButtonGroup>
+                        </div>
                     </div>
                 </div>
+                {error && (
+                    <div className="rounded-lg border border-error bg-error-secondary/10 p-4">
+                        <p className="text-sm font-medium text-error">{error}</p>
+                    </div>
+                )}
                 <div className="h-[600px] w-full overflow-hidden rounded-lg border border-primary">
-                    <Map center={hamptonRoadsCenter} zoom={10} markers={sampleMarkers} tileStyle={tileStyle} className="h-full w-full" />
+                    <Map
+                        center={hamptonRoadsCenter}
+                        zoom={10}
+                        markers={sampleMarkers}
+                        tileStyle={tileStyle}
+                        userLocation={location}
+                        className="h-full w-full"
+                    />
                 </div>
                 <div className="rounded-lg bg-primary p-4">
                     <h2 className="mb-2 font-semibold">Sample Locations</h2>

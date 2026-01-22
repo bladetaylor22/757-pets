@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import L from "leaflet";
 import type { MapMarker } from "./types";
+import { createUserLocationIcon } from "./user-location-icon";
+import { calculateDistance, formatDistance } from "./distance-utils";
 import "leaflet/dist/leaflet.css";
 
 export type TileStyle = "positron" | "dark-matter" | "voyager";
@@ -54,9 +56,10 @@ export type MapProps = {
     className?: string;
     tileStyle?: TileStyle;
     onTileStyleChange?: (style: TileStyle) => void;
+    userLocation?: { position: [number, number]; accuracy?: number } | null;
 };
 
-export function Map({ center, zoom = 11, markers, className, tileStyle = "positron" }: MapProps) {
+export function Map({ center, zoom = 11, markers, className, tileStyle = "positron", userLocation }: MapProps) {
     const [isMounted, setIsMounted] = useState(false);
 
     // Ensure component only renders on client
@@ -65,6 +68,24 @@ export function Map({ center, zoom = 11, markers, className, tileStyle = "positr
     }, []);
 
     const selectedTileConfig = TILE_STYLES[tileStyle];
+
+    // Create user location icon only once when userLocation exists
+    const userLocationIcon = useMemo(() => {
+        if (!userLocation) return null;
+        return createUserLocationIcon();
+    }, [userLocation]);
+
+    // Calculate distances from user location to each marker
+    const markerDistances = useMemo(() => {
+        if (!userLocation) return {} as Record<string, number>;
+
+        const distances: Record<string, number> = {};
+        markers.forEach((marker) => {
+            const distance = calculateDistance(userLocation.position, marker.position);
+            distances[marker.id] = distance;
+        });
+        return distances;
+    }, [userLocation, markers]);
 
     if (!isMounted) {
         return (
@@ -91,20 +112,42 @@ export function Map({ center, zoom = 11, markers, className, tileStyle = "positr
                     url={selectedTileConfig.url}
                     subdomains="abcd"
                 />
-                {markers.map((marker) => (
-                    <Marker key={marker.id} position={marker.position}>
-                        {marker.title && (
-                            <Popup>
-                                <div>
-                                    <strong>{marker.title}</strong>
-                                    {marker.description && (
-                                        <div className="mt-1 text-sm">{marker.description}</div>
-                                    )}
-                                </div>
-                            </Popup>
-                        )}
+                {markers.map((marker) => {
+                    const distance = markerDistances[marker.id];
+                    return (
+                        <Marker key={marker.id} position={marker.position}>
+                            {marker.title && (
+                                <Popup>
+                                    <div>
+                                        <strong>{marker.title}</strong>
+                                        {marker.description && (
+                                            <div className="mt-1 text-sm">{marker.description}</div>
+                                        )}
+                                        {distance !== undefined && (
+                                            <div className="mt-1 text-sm text-muted-foreground">
+                                                Distance: {formatDistance(distance)}
+                                            </div>
+                                        )}
+                                    </div>
+                                </Popup>
+                            )}
+                        </Marker>
+                    );
+                })}
+                {userLocation && userLocationIcon && (
+                    <Marker key="user-location" position={userLocation.position} icon={userLocationIcon}>
+                        <Popup>
+                            <div>
+                                <strong>Your Location</strong>
+                                {userLocation.accuracy && (
+                                    <div className="mt-1 text-sm">
+                                        Accuracy: {Math.round(userLocation.accuracy)}m
+                                    </div>
+                                )}
+                            </div>
+                        </Popup>
                     </Marker>
-                ))}
+                )}
             </MapContainer>
         </div>
     );
