@@ -5,7 +5,6 @@ import { Button } from "@/components/base/buttons/button";
 import { SocialButton } from "@/components/base/buttons/social-button";
 import { Form } from "@/components/base/form/form";
 import { Input } from "@/components/base/input/input";
-import { UntitledLogo } from "@/components/foundations/logo/untitledui-logo";
 import { UntitledLogoMinimal } from "@/components/foundations/logo/untitledui-logo-minimal";
 
 interface SignupSplitImageProps {
@@ -18,9 +17,6 @@ export const SignupSplitImage = ({ onSignUp, error, isLoading }: SignupSplitImag
     return (
         <section className="grid min-h-screen grid-cols-1 bg-primary lg:grid-cols-2">
             <div className="flex flex-col bg-primary">
-                <header className="hidden p-8 md:block">
-                    <UntitledLogo />
-                </header>
                 <div className="flex flex-1 justify-center px-4 py-12 md:items-center md:px-8 md:py-0">
                     <div className="flex w-full flex-col gap-8 sm:max-w-90">
                         <div className="flex flex-col gap-6">

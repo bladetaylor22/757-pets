@@ -7,6 +7,7 @@ import type { TileStyle } from "@/components/application/map/map";
 import { ButtonGroup, ButtonGroupItem } from "@/components/base/button-group/button-group";
 import { Button } from "@/components/base/buttons/button";
 import { useGeolocation } from "@/hooks/use-geolocation";
+import { TopNavbar } from "@/components/marketing/header-navigation/top-navbar";
 
 // Dynamically import Map component to avoid SSR issues
 const Map = dynamic(() => import("@/components/application/map/map").then((mod) => ({ default: mod.Map })), {
@@ -57,8 +58,10 @@ export default function TestMapPage() {
     const showLocationButton = permissionState === "prompt" || permissionState === "denied";
 
     return (
-        <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
-            <div className="w-full max-w-6xl space-y-6 rounded-lg border border-secondary bg-secondary p-8">
+        <div className="flex min-h-screen flex-col">
+            <TopNavbar />
+            <div className="flex flex-1 flex-col items-center justify-center gap-8 p-8">
+                <div className="w-full max-w-6xl space-y-6 rounded-lg border border-secondary bg-secondary p-8">
                 <div className="flex items-center justify-between">
                     <div>
                         <h1 className="text-2xl font-bold">Map Test - Hampton Roads</h1>
@@ -121,6 +124,7 @@ export default function TestMapPage() {
                         ))}
                     </ul>
                 </div>
+            </div>
             </div>
         </div>
     );

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { signIn } from "@/lib/auth-client";
 import { LoginSimpleMinimal } from "@/components/shared-assets/login/login-simple-minimal";
 import { handleAuthError } from "@/lib/auth-errors";
+import { TopNavbar } from "@/components/marketing/header-navigation/top-navbar";
 
 export default function LoginPage() {
     const router = useRouter();
@@ -36,10 +37,13 @@ export default function LoginPage() {
     };
 
     return (
-        <LoginSimpleMinimal
-            onSignIn={handleSignIn}
-            error={error}
-            isLoading={isLoading}
-        />
+        <div className="flex min-h-screen flex-col">
+            <TopNavbar />
+            <LoginSimpleMinimal
+                onSignIn={handleSignIn}
+                error={error}
+                isLoading={isLoading}
+            />
+        </div>
     );
 }

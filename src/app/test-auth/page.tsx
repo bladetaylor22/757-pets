@@ -9,6 +9,7 @@ import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/base/buttons/button";
 import Link from "next/link";
 import { useState } from "react";
+import { TopNavbar } from "@/components/marketing/header-navigation/top-navbar";
 
 function PetProfilesSection() {
     const { isAuthenticated } = useAuth();
@@ -131,8 +132,10 @@ export default function TestAuthPage() {
     }
 
     return (
-        <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
-            <div className="w-full max-w-2xl space-y-6 rounded-lg border border-secondary bg-secondary p-8">
+        <div className="flex min-h-screen flex-col">
+            <TopNavbar />
+            <div className="flex flex-1 flex-col items-center justify-center gap-8 p-8">
+                <div className="w-full max-w-2xl space-y-6 rounded-lg border border-secondary bg-secondary p-8">
                 <div className="flex items-center justify-between">
                     <h1 className="text-2xl font-bold">Better Auth Test Page</h1>
                     {isAuthenticated && isPlatformOwner && (
@@ -308,6 +311,7 @@ export default function TestAuthPage() {
                         </div>
                     </div>
                 </div>
+            </div>
             </div>
         </div>
     );

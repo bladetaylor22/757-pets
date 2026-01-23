@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { signUp } from "@/lib/auth-client";
 import { SignupSplitImage } from "@/components/shared-assets/signup/signup-split-image";
 import { handleAuthError } from "@/lib/auth-errors";
+import { TopNavbar } from "@/components/marketing/header-navigation/top-navbar";
 
 export default function SignUpPage() {
     const router = useRouter();
@@ -37,10 +38,13 @@ export default function SignUpPage() {
     };
 
     return (
-        <SignupSplitImage
-            onSignUp={handleSignUp}
-            error={error}
-            isLoading={isLoading}
-        />
+        <div className="flex min-h-screen flex-col">
+            <TopNavbar />
+            <SignupSplitImage
+                onSignUp={handleSignUp}
+                error={error}
+                isLoading={isLoading}
+            />
+        </div>
     );
 }

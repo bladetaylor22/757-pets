@@ -3,12 +3,15 @@
 import { ArrowLeft } from "@untitledui/icons";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/base/buttons/button";
+import { TopNavbar } from "@/components/marketing/header-navigation/top-navbar";
 
 export default function NotFound() {
     const router = useRouter();
 
     return (
-        <section className="flex min-h-screen items-start bg-primary py-16 md:items-center md:py-24">
+        <div className="flex min-h-screen flex-col">
+            <TopNavbar />
+            <section className="flex flex-1 items-start bg-primary py-16 md:items-center md:py-24">
             <div className="mx-auto max-w-container grow px-4 md:px-8">
                 <div className="flex w-full max-w-3xl flex-col gap-8 md:gap-12">
                     <div className="flex flex-col gap-4 md:gap-6">
@@ -30,5 +33,6 @@ export default function NotFound() {
                 </div>
             </div>
         </section>
+        </div>
     );
 }
