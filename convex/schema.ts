@@ -143,4 +143,9 @@ export default defineSchema({
   })
     .index("by_petId", ["petId"])
     .index("by_petId_and_expiresAt", ["petId", "expiresAt"]),
+
+  platformOwners: defineTable({
+    userId: v.string(), // Better Auth user ID
+    createdAt: v.number(), // Timestamp when user was designated as platform owner
+  }).index("by_userId", ["userId"]),
 });

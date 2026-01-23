@@ -1,11 +1,13 @@
 "use client";
 
 import { useAuth } from "@/hooks/use-auth";
+import { useAdmin } from "@/hooks/use-admin";
 import { signOut } from "@/lib/auth-client";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Button } from "@/components/base/buttons/button";
+import Link from "next/link";
 import { useState } from "react";
 
 function PetProfilesSection() {
@@ -112,6 +114,7 @@ function PetPhoto({ fileId }: { fileId: Id<"_storage"> }) {
 
 export default function TestAuthPage() {
     const { session, user: convexUser, isAuthenticated, isLoading } = useAuth();
+    const { isPlatformOwner } = useAdmin();
     const sendTestEmail = useMutation(api.emails.sendTestEmail);
     const [emailStatus, setEmailStatus] = useState<{
         loading: boolean;
@@ -130,7 +133,16 @@ export default function TestAuthPage() {
     return (
         <div className="flex min-h-screen flex-col items-center justify-center gap-8 p-8">
             <div className="w-full max-w-2xl space-y-6 rounded-lg border border-secondary bg-secondary p-8">
-                <h1 className="text-2xl font-bold">Better Auth Test Page</h1>
+                <div className="flex items-center justify-between">
+                    <h1 className="text-2xl font-bold">Better Auth Test Page</h1>
+                    {isAuthenticated && isPlatformOwner && (
+                        <Link href="/admin">
+                            <Button color="primary" size="md">
+                                Admin area
+                            </Button>
+                        </Link>
+                    )}
+                </div>
 
                 <div className="space-y-4">
                     <div className="rounded-lg bg-primary p-4">
