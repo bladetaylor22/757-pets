@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { BookClosed, FileCode01, PlayCircle, Stars02, ChevronDown } from "@untitledui/icons";
 import { Button as AriaButton, Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
 import { Button } from "@/components/base/buttons/button";
@@ -10,6 +11,8 @@ import { UntitledLogoMinimal } from "@/components/foundations/logo/untitledui-lo
 import { TopNavbarMenuItemLink } from "./top-navbar-base/top-navbar-menu-item";
 import { FeatureCardVertical } from "./top-navbar-base/top-navbar-feature-card";
 import { cx } from "@/utils/cx";
+import { useAuth } from "@/hooks/use-auth";
+import { signOut } from "@/lib/auth-client";
 
 type TopNavbarItem = {
     label: string;
@@ -108,7 +111,14 @@ const MobileNavItem = (props: { className?: string; label: string; href?: string
     );
 };
 
-const MobileFooter = () => {
+const MobileFooter = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
+    const router = useRouter();
+
+    const handleLogout = async () => {
+        await signOut();
+        router.push("/login");
+    };
+
     return (
         <div className="flex flex-col gap-8 border-t border-secondary px-4 py-6">
             <div>
@@ -123,9 +133,14 @@ const MobileFooter = () => {
                 </ul>
             </div>
             <div className="flex flex-col gap-3">
-                <Button size="lg" href="/sign-up">Sign up</Button>
-                <Button color="secondary" size="lg" href="/login">
-                    Log in
+                {!isAuthenticated && <Button size="lg" href="/sign-up">Sign up</Button>}
+                <Button 
+                    color="secondary" 
+                    size="lg"
+                    onClick={isAuthenticated ? handleLogout : undefined}
+                    href={!isAuthenticated ? "/login" : undefined}
+                >
+                    {isAuthenticated ? "Log out" : "Log in"}
                 </Button>
             </div>
         </div>
@@ -141,6 +156,13 @@ interface TopNavbarProps {
 
 export const TopNavbar = ({ items = topNavbarItems, isFullWidth, isFloating, className }: TopNavbarProps) => {
     const headerRef = useRef<HTMLElement>(null);
+    const router = useRouter();
+    const { isAuthenticated } = useAuth();
+
+    const handleLogout = async () => {
+        await signOut();
+        router.push("/login");
+    };
 
     return (
         <header
@@ -222,12 +244,24 @@ export const TopNavbar = ({ items = topNavbarItems, isFullWidth, isFloating, cla
                     </div>
 
                     <div className="hidden items-center gap-3 md:flex">
-                        <Button color="secondary" size={isFloating ? "md" : "lg"} href="/login">
-                            Log in
-                        </Button>
-                        <Button color="primary" size={isFloating ? "md" : "lg"} href="/sign-up">
-                            Sign up
-                        </Button>
+                        {isAuthenticated ? (
+                            <Button 
+                                color="secondary" 
+                                size={isFloating ? "md" : "lg"}
+                                onClick={handleLogout}
+                            >
+                                Log out
+                            </Button>
+                        ) : (
+                            <>
+                                <Button color="secondary" size={isFloating ? "md" : "lg"} href="/login">
+                                    Log in
+                                </Button>
+                                <Button color="primary" size={isFloating ? "md" : "lg"} href="/sign-up">
+                                    Sign up
+                                </Button>
+                            </>
+                        )}
                     </div>
 
                     {/* Mobile menu and menu trigger */}
@@ -283,7 +317,7 @@ export const TopNavbar = ({ items = topNavbarItems, isFullWidth, isFloating, cla
                                         )}
                                     </ul>
 
-                                    <MobileFooter />
+                                    <MobileFooter isAuthenticated={isAuthenticated} />
                                 </nav>
                             </AriaDialog>
                         </AriaPopover>

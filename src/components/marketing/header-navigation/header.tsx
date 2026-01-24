@@ -9,6 +9,8 @@ import { UntitledLogo } from "@/components/foundations/logo/untitledui-logo";
 import { UntitledLogoMinimal } from "@/components/foundations/logo/untitledui-logo-minimal";
 import { DropdownMenuSimple } from "@/components/marketing/header-navigation/dropdown-header-navigation";
 import { cx } from "@/utils/cx";
+import { useAuth } from "@/hooks/use-auth";
+import { signOut } from "@/lib/auth-client";
 
 type HeaderNavItem = {
     label: string;
@@ -65,7 +67,11 @@ const MobileNavItem = (props: { className?: string; label: string; href?: string
     );
 };
 
-const MobileFooter = () => {
+const MobileFooter = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
+    const handleLogout = async () => {
+        await signOut();
+    };
+
     return (
         <div className="flex flex-col gap-8 border-t border-secondary px-4 py-6">
             <div>
@@ -80,9 +86,14 @@ const MobileFooter = () => {
                 </ul>
             </div>
             <div className="flex flex-col gap-3">
-                <Button size="lg">Sign up</Button>
-                <Button color="secondary" size="lg">
-                    Log in
+                {!isAuthenticated && <Button size="lg">Sign up</Button>}
+                <Button 
+                    color="secondary" 
+                    size="lg"
+                    onClick={isAuthenticated ? handleLogout : undefined}
+                    href={!isAuthenticated ? "/login" : undefined}
+                >
+                    {isAuthenticated ? "Log out" : "Log in"}
                 </Button>
             </div>
         </div>
@@ -98,6 +109,11 @@ interface HeaderProps {
 
 export const Header = ({ items = headerNavItems, isFullWidth, isFloating, className }: HeaderProps) => {
     const headerRef = useRef<HTMLElement>(null);
+    const { isAuthenticated } = useAuth();
+
+    const handleLogout = async () => {
+        await signOut();
+    };
 
     return (
         <header
@@ -177,12 +193,24 @@ export const Header = ({ items = headerNavItems, isFullWidth, isFloating, classN
                     </div>
 
                     <div className="hidden items-center gap-3 md:flex">
-                        <Button color="secondary" size={isFloating ? "md" : "lg"}>
-                            Log in
-                        </Button>
-                        <Button color="primary" size={isFloating ? "md" : "lg"}>
-                            Sign up
-                        </Button>
+                        {isAuthenticated ? (
+                            <Button 
+                                color="secondary" 
+                                size={isFloating ? "md" : "lg"}
+                                onClick={handleLogout}
+                            >
+                                Log out
+                            </Button>
+                        ) : (
+                            <>
+                                <Button color="secondary" size={isFloating ? "md" : "lg"} href="/login">
+                                    Log in
+                                </Button>
+                                <Button color="primary" size={isFloating ? "md" : "lg"} href="/sign-up">
+                                    Sign up
+                                </Button>
+                            </>
+                        )}
                     </div>
 
                     {/* Mobile menu and menu trigger */}
@@ -238,7 +266,7 @@ export const Header = ({ items = headerNavItems, isFullWidth, isFloating, classN
                                         )}
                                     </ul>
 
-                                    <MobileFooter />
+                                    <MobileFooter isAuthenticated={isAuthenticated} />
                                 </nav>
                             </AriaDialog>
                         </AriaPopover>

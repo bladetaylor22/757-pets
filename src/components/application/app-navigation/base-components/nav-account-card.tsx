@@ -2,6 +2,7 @@
 
 import type { FC, HTMLAttributes } from "react";
 import { useCallback, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import type { Placement } from "@react-types/overlays";
 import { BookOpen01, ChevronSelectorVertical, LogOut01, Plus, Settings01, User01 } from "@untitledui/icons";
 import { useFocusManager } from "react-aria";
@@ -11,6 +12,7 @@ import { AvatarLabelGroup } from "@/components/base/avatar/avatar-label-group";
 import { Button } from "@/components/base/buttons/button";
 import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
+import { signOut } from "@/lib/auth-client";
 import { cx } from "@/utils/cx";
 
 type NavAccountType = {
@@ -48,6 +50,7 @@ export const NavAccountMenu = ({
     selectedAccountId = "olivia",
     ...dialogProps
 }: AriaDialogProps & { className?: string; accounts?: NavAccountType[]; selectedAccountId?: string }) => {
+    const router = useRouter();
     const focusManager = useFocusManager();
     const dialogRef = useRef<HTMLDivElement>(null);
 
@@ -117,7 +120,15 @@ export const NavAccountMenu = ({
             </div>
 
             <div className="pt-1 pb-1.5">
-                <NavAccountCardMenuItem label="Sign out" icon={LogOut01} shortcut="⌥⇧Q" />
+                <NavAccountCardMenuItem 
+                    label="Sign out" 
+                    icon={LogOut01} 
+                    shortcut="⌥⇧Q"
+                    onClick={async () => {
+                        await signOut();
+                        router.push("/login");
+                    }}
+                />
             </div>
         </AriaDialog>
     );
