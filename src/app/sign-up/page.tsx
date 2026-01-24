@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { signUp } from "@/lib/auth-client";
 import { SignupSplitImage } from "@/components/shared-assets/signup/signup-split-image";
 import { handleAuthError } from "@/lib/auth-errors";
-import { TopNavbar } from "@/components/marketing/header-navigation/top-navbar";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function SignUpPage() {
@@ -50,7 +49,6 @@ export default function SignUpPage() {
     if (authLoading) {
         return (
             <div className="flex min-h-screen flex-col">
-                <TopNavbar />
                 <div className="flex flex-1 items-center justify-center">
                     <p className="text-tertiary">Loading...</p>
                 </div>
@@ -65,7 +63,6 @@ export default function SignUpPage() {
 
     return (
         <div className="flex min-h-screen flex-col">
-            <TopNavbar />
             <SignupSplitImage
                 onSignUp={handleSignUp}
                 error={error}

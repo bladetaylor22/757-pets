@@ -5,7 +5,7 @@ import { Button } from "@/components/base/buttons/button";
 import { SocialButton } from "@/components/base/buttons/social-button";
 import { Form } from "@/components/base/form/form";
 import { Input } from "@/components/base/input/input";
-import { UntitledLogoMinimal } from "@/components/foundations/logo/untitledui-logo-minimal";
+import { UntitledLogo } from "@/components/foundations/logo/untitledui-logo";
 
 interface SignupSplitImageProps {
     onSignUp?: (email: string, password: string, name: string) => Promise<void>;
@@ -19,8 +19,8 @@ export const SignupSplitImage = ({ onSignUp, error, isLoading }: SignupSplitImag
             <div className="flex flex-col bg-primary">
                 <div className="flex flex-1 justify-center px-4 py-12 md:items-center md:px-8 md:py-0">
                     <div className="flex w-full flex-col gap-8 sm:max-w-90">
-                        <div className="flex flex-col gap-6">
-                            <UntitledLogoMinimal className="size-10 lg:hidden" />
+                        <div className="flex flex-col gap-6 pt-6">
+                            <UntitledLogo className="w-35.5" />
 
                             <div className="flex flex-col gap-2 md:gap-3">
                                 <h1 className="text-display-xs font-semibold text-primary md:text-display-sm">Sign up</h1>
@@ -78,7 +78,7 @@ export const SignupSplitImage = ({ onSignUp, error, isLoading }: SignupSplitImag
 
                         <div className="flex justify-center gap-1 text-center">
                             <span className="text-sm text-tertiary">Already have an account?</span>
-                            <Button href="#" color="link-color" size="md">
+                            <Button href="/login" color="link-color" size="md">
                                 Log in
                             </Button>
                         </div>
@@ -86,11 +86,11 @@ export const SignupSplitImage = ({ onSignUp, error, isLoading }: SignupSplitImag
                 </div>
 
                 <footer className="hidden justify-between p-8 pt-11 lg:flex">
-                    <p className="text-sm text-tertiary">© Untitled UI 2077</p>
+                    <p className="text-sm text-tertiary">© 757 PETS 2026</p>
 
-                    <a href="mailto:help@untitledui.com" className="flex items-center gap-2 text-sm text-tertiary">
+                    <a href="mailto:hello@757pets.com" className="flex items-center gap-2 text-sm text-tertiary">
                         <Mail01 className="size-4 text-fg-quaternary" />
-                        help@untitledui.com
+                        hello@757pets.com
                     </a>
                 </footer>
             </div>

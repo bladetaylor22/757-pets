@@ -136,7 +136,8 @@ function AdminDashboardContent() {
                 <TopNavbar
                     items={[
                         { label: "Home", href: "/" },
-                        { label: "Admin Dashboard", href: "/admin" },
+                        { label: "Dashboard", href: "/admin" },
+                        { label: "Pets", href: "/admin/pets" },
                     ]}
                 />
                 <main className="bg-primary pt-8 pb-16 lg:pt-12 lg:pb-24">
@@ -155,7 +156,8 @@ function AdminDashboardContent() {
             <TopNavbar
                 items={[
                     { label: "Home", href: "/" },
-                    { label: "Admin Dashboard", href: "/admin" },
+                    { label: "Dashboard", href: "/admin" },
+                    { label: "Pets", href: "/admin/pets" },
                 ]}
             />
 
