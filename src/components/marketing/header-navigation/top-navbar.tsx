@@ -2,17 +2,17 @@
 
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import { BookClosed, FileCode01, PlayCircle, Stars02, ChevronDown } from "@untitledui/icons";
 import { Button as AriaButton, Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
 import { Button } from "@/components/base/buttons/button";
+import { Avatar } from "@/components/base/avatar/avatar";
 import { UntitledLogo } from "@/components/foundations/logo/untitledui-logo";
 import { UntitledLogoMinimal } from "@/components/foundations/logo/untitledui-logo-minimal";
 import { TopNavbarMenuItemLink } from "./top-navbar-base/top-navbar-menu-item";
 import { FeatureCardVertical } from "./top-navbar-base/top-navbar-feature-card";
+import { NavAccountMenu } from "@/components/application/app-navigation/base-components/nav-account-card";
 import { cx } from "@/utils/cx";
 import { useAuth } from "@/hooks/use-auth";
-import { signOut } from "@/lib/auth-client";
 
 type TopNavbarItem = {
     label: string;
@@ -111,13 +111,24 @@ const MobileNavItem = (props: { className?: string; label: string; href?: string
     );
 };
 
-const MobileFooter = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
-    const router = useRouter();
+const MobileFooter = ({ isAuthenticated, user, isLoading }: { isAuthenticated: boolean; user?: { name?: string | null; email?: string | null; image?: string | null } | null; isLoading?: boolean }) => {
 
-    const handleLogout = async () => {
-        await signOut();
-        router.push("/login");
+    // Generate initials from user name or email
+    const getInitials = () => {
+        if (user?.name) {
+            const names = user.name.split(" ");
+            if (names.length >= 2) {
+                return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+            }
+            return user.name.substring(0, 2).toUpperCase();
+        }
+        if (user?.email) {
+            return user.email.substring(0, 2).toUpperCase();
+        }
+        return "U";
     };
+
+    const userDisplayName = user?.name || user?.email || "User";
 
     return (
         <div className="flex flex-col gap-8 border-t border-secondary px-4 py-6">
@@ -133,15 +144,55 @@ const MobileFooter = ({ isAuthenticated }: { isAuthenticated: boolean }) => {
                 </ul>
             </div>
             <div className="flex flex-col gap-3">
-                {!isAuthenticated && <Button size="lg" href="/sign-up">Sign up</Button>}
-                <Button 
-                    color="secondary" 
-                    size="lg"
-                    onClick={isAuthenticated ? handleLogout : undefined}
-                    href={!isAuthenticated ? "/login" : undefined}
-                >
-                    {isAuthenticated ? "Log out" : "Log in"}
-                </Button>
+                {isLoading ? null : !isAuthenticated ? (
+                    <>
+                        <Button size="lg" href="/sign-up">Sign up</Button>
+                        <Button color="secondary" size="lg" href="/login">
+                            Log in
+                        </Button>
+                    </>
+                ) : (
+                    <div className="flex items-center justify-center">
+                        <AriaDialogTrigger>
+                            <AriaButton
+                                className={({ isPressed, isFocused }) =>
+                                    cx(
+                                        "group relative inline-flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 w-full",
+                                        (isPressed || isFocused) && "outline-2 outline-offset-2 outline-focus-ring",
+                                        "hover:bg-primary_hover"
+                                    )
+                                }
+                            >
+                                <Avatar 
+                                    alt={userDisplayName} 
+                                    src={user?.image || undefined}
+                                    size="md"
+                                    placeholder={
+                                        <span className="flex items-center justify-center text-xs font-semibold text-quaternary">
+                                            {getInitials()}
+                                        </span>
+                                    }
+                                />
+                                <span className="text-sm font-semibold text-primary">{userDisplayName}</span>
+                            </AriaButton>
+                            <AriaPopover
+                                placement="top right"
+                                offset={8}
+                                className={({ isEntering, isExiting }) =>
+                                    cx(
+                                        "will-change-transform",
+                                        isEntering &&
+                                            "duration-300 ease-out animate-in fade-in placement-right:slide-in-from-left-2 placement-top:slide-in-from-bottom-2 placement-bottom:slide-in-from-top-2",
+                                        isExiting &&
+                                            "duration-150 ease-in animate-out fade-out placement-right:slide-out-to-left-2 placement-top:slide-out-to-bottom-2 placement-bottom:slide-out-to-top-2",
+                                    )
+                                }
+                            >
+                                <NavAccountMenu />
+                            </AriaPopover>
+                        </AriaDialogTrigger>
+                    </div>
+                )}
             </div>
         </div>
     );
@@ -156,13 +207,24 @@ interface TopNavbarProps {
 
 export const TopNavbar = ({ items = topNavbarItems, isFullWidth, isFloating, className }: TopNavbarProps) => {
     const headerRef = useRef<HTMLElement>(null);
-    const router = useRouter();
-    const { isAuthenticated } = useAuth();
+    const { isAuthenticated, user, isLoading } = useAuth();
 
-    const handleLogout = async () => {
-        await signOut();
-        router.push("/login");
+    // Generate initials from user name or email
+    const getInitials = () => {
+        if (user?.name) {
+            const names = user.name.split(" ");
+            if (names.length >= 2) {
+                return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
+            }
+            return user.name.substring(0, 2).toUpperCase();
+        }
+        if (user?.email) {
+            return user.email.substring(0, 2).toUpperCase();
+        }
+        return "U";
     };
+
+    const userDisplayName = user?.name || user?.email || "User";
 
     return (
         <header
@@ -244,14 +306,43 @@ export const TopNavbar = ({ items = topNavbarItems, isFullWidth, isFloating, cla
                     </div>
 
                     <div className="hidden items-center gap-3 md:flex">
-                        {isAuthenticated ? (
-                            <Button 
-                                color="secondary" 
-                                size={isFloating ? "md" : "lg"}
-                                onClick={handleLogout}
-                            >
-                                Log out
-                            </Button>
+                        {isLoading ? null : isAuthenticated ? (
+                            <AriaDialogTrigger>
+                                <AriaButton
+                                    className={({ isPressed, isFocused }) =>
+                                        cx(
+                                            "group relative inline-flex cursor-pointer",
+                                            (isPressed || isFocused) && "rounded-full outline-2 outline-offset-2 outline-focus-ring",
+                                        )
+                                    }
+                                >
+                                    <Avatar 
+                                        alt={userDisplayName} 
+                                        src={user?.image || undefined}
+                                        size="md"
+                                        placeholder={
+                                            <span className="flex items-center justify-center text-xs font-semibold text-quaternary">
+                                                {getInitials()}
+                                            </span>
+                                        }
+                                    />
+                                </AriaButton>
+                                <AriaPopover
+                                    placement="bottom right"
+                                    offset={8}
+                                    className={({ isEntering, isExiting }) =>
+                                        cx(
+                                            "will-change-transform",
+                                            isEntering &&
+                                                "duration-300 ease-out animate-in fade-in placement-right:slide-in-from-left-2 placement-top:slide-in-from-bottom-2 placement-bottom:slide-in-from-top-2",
+                                            isExiting &&
+                                                "duration-150 ease-in animate-out fade-out placement-right:slide-out-to-left-2 placement-top:slide-out-to-bottom-2 placement-bottom:slide-out-to-top-2",
+                                        )
+                                    }
+                                >
+                                    <NavAccountMenu />
+                                </AriaPopover>
+                            </AriaDialogTrigger>
                         ) : (
                             <>
                                 <Button color="secondary" size={isFloating ? "md" : "lg"} href="/login">
@@ -317,7 +408,7 @@ export const TopNavbar = ({ items = topNavbarItems, isFullWidth, isFloating, cla
                                         )}
                                     </ul>
 
-                                    <MobileFooter isAuthenticated={isAuthenticated} />
+                                    <MobileFooter isAuthenticated={isAuthenticated} user={user} isLoading={isLoading ?? undefined} />
                                 </nav>
                             </AriaDialog>
                         </AriaPopover>

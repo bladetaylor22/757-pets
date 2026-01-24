@@ -6,7 +6,7 @@ import type { SortDescriptor } from "react-aria-components";
 import { useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { ProtectedAdminRoute } from "@/components/auth/protected-admin-route";
-import { HeaderNavigationBase } from "@/components/application/app-navigation/header-navigation";
+import { TopNavbar } from "@/components/marketing/header-navigation/top-navbar";
 import { MetricsChart02 } from "@/components/application/metrics/metrics";
 import { PaginationCardMinimal } from "@/components/application/pagination/pagination";
 import { Table, TableCard } from "@/components/application/table/table";
@@ -133,14 +133,10 @@ function AdminDashboardContent() {
     if (isLoading) {
         return (
             <div className="bg-primary">
-                <HeaderNavigationBase
+                <TopNavbar
                     items={[
                         { label: "Home", href: "/" },
-                        {
-                            label: "Admin Dashboard",
-                            href: "/admin",
-                            current: true,
-                        },
+                        { label: "Admin Dashboard", href: "/admin" },
                     ]}
                 />
                 <main className="bg-primary pt-8 pb-16 lg:pt-12 lg:pb-24">
@@ -156,14 +152,10 @@ function AdminDashboardContent() {
 
     return (
         <div className="bg-primary">
-            <HeaderNavigationBase
+            <TopNavbar
                 items={[
                     { label: "Home", href: "/" },
-                    {
-                        label: "Admin Dashboard",
-                        href: "/admin",
-                        current: true,
-                    },
+                    { label: "Admin Dashboard", href: "/admin" },
                 ]}
             />
 
