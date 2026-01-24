@@ -1,6 +1,7 @@
 "use client";
 
 import type { FC, ReactNode } from "react";
+import { useState } from "react";
 import { Bell01, LifeBuoy01, SearchLg, Settings01 } from "@untitledui/icons";
 import { Button as AriaButton, DialogTrigger, Popover } from "react-aria-components";
 import { Avatar } from "@/components/base/avatar/avatar";
@@ -52,6 +53,8 @@ export const HeaderNavigationBase = ({
     showAvatarDropdown = true,
     hideBorder = false,
 }: HeaderNavigationBaseProps) => {
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isDropdownLocked, setIsDropdownLocked] = useState(false);
     const activeSubNavItems = subItems || items.find((item) => item.current && item.items && item.items.length > 0)?.items;
 
     const showSecondaryNav = activeSubNavItems && activeSubNavItems.length > 0;
@@ -147,7 +150,16 @@ export const HeaderNavigationBase = ({
                             </div>
 
                             {showAvatarDropdown && (
-                                <DialogTrigger>
+                                <DialogTrigger
+                                    isOpen={isDropdownOpen && !isDropdownLocked}
+                                    onOpenChange={(nextOpen) => {
+                                        // Prevent opening if locked
+                                        if (nextOpen && isDropdownLocked) {
+                                            return;
+                                        }
+                                        setIsDropdownOpen(nextOpen);
+                                    }}
+                                >
                                     <AriaButton
                                         className={({ isPressed, isFocused }) =>
                                             cx(
@@ -171,7 +183,11 @@ export const HeaderNavigationBase = ({
                                             )
                                         }
                                     >
-                                        <NavAccountMenu />
+                                        <NavAccountMenu 
+                                            isDropdownOpen={isDropdownOpen}
+                                            onCloseDropdown={() => setIsDropdownOpen(false)} 
+                                            onDropdownLockChange={setIsDropdownLocked}
+                                        />
                                     </Popover>
                                 </DialogTrigger>
                             )}

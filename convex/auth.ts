@@ -92,11 +92,12 @@ export const requireAuth = query({
     },
 });
 
-// Example mutation for updating user profile
+// Mutation for updating user profile
 export const updateUserProfile = mutation({
     args: {
         name: v.optional(v.string()),
-        email: v.optional(v.string()),
+        phoneNumber: v.optional(v.string()),
+        image: v.optional(v.string()),
     },
     handler: async (ctx, args) => {
         const user = await authComponent.getAuthUser(ctx);
@@ -107,23 +108,39 @@ export const updateUserProfile = mutation({
             });
         }
 
-        const { auth, headers } = await authComponent.getAuth(createAuth, ctx);
+        // Build update object for adapter
+        const updateData: {
+            name?: string;
+            phoneNumber?: string | null;
+            image?: string | null;
+            updatedAt: number;
+        } = {
+            updatedAt: Date.now(),
+        };
         
-        // Update user via Better Auth API
-        if (args.email) {
-            await auth.api.changeEmail({
-                body: { newEmail: args.email },
-                headers,
-            });
+        if (args.name !== undefined) updateData.name = args.name;
+        if (args.phoneNumber !== undefined) {
+            updateData.phoneNumber = args.phoneNumber || null;
+        }
+        if (args.image !== undefined) {
+            updateData.image = args.image || null;
         }
 
-        // Update name if provided
-        if (args.name) {
-            await auth.api.updateUser({
-                body: { name: args.name },
-                headers,
-            });
-        }
+        // Use adapter to update user directly (supports all fields including phoneNumber)
+        // Use email as identifier since it's guaranteed to be unique
+        await ctx.runMutation(components.betterAuth.adapter.updateOne, {
+            input: {
+                model: "user",
+                where: [
+                    {
+                        field: "email",
+                        operator: "eq",
+                        value: user.email,
+                    },
+                ],
+                update: updateData,
+            },
+        });
 
         return { success: true };
     },

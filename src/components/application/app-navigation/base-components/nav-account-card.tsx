@@ -1,17 +1,17 @@
 "use client";
 
 import type { FC, HTMLAttributes } from "react";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Placement } from "@react-types/overlays";
-import { BookOpen01, ChevronSelectorVertical, LogOut01, Plus, Settings01, User01 } from "@untitledui/icons";
+import { ChevronSelectorVertical, LogOut01, Settings01, User01 } from "@untitledui/icons";
 import { useFocusManager } from "react-aria";
 import type { DialogProps as AriaDialogProps } from "react-aria-components";
 import { Button as AriaButton, Dialog as AriaDialog, DialogTrigger as AriaDialogTrigger, Popover as AriaPopover } from "react-aria-components";
 import { AvatarLabelGroup } from "@/components/base/avatar/avatar-label-group";
-import { Button } from "@/components/base/buttons/button";
-import { RadioButtonBase } from "@/components/base/radio-buttons/radio-buttons";
+import { ProfileSettingsModal } from "@/components/application/modals/profile-settings-modal";
 import { useBreakpoint } from "@/hooks/use-breakpoint";
+import { useAdmin } from "@/hooks/use-admin";
 import { signOut } from "@/lib/auth-client";
 import { cx } from "@/utils/cx";
 
@@ -47,12 +47,24 @@ const placeholderAccounts: NavAccountType[] = [
 
 export const NavAccountMenu = ({
     className,
-    selectedAccountId = "olivia",
+    selectedAccountId: _selectedAccountId = "olivia",
+    onCloseDropdown,
+    isDropdownOpen: _isDropdownOpen,
+    onDropdownLockChange,
     ...dialogProps
-}: AriaDialogProps & { className?: string; accounts?: NavAccountType[]; selectedAccountId?: string }) => {
+}: AriaDialogProps & {
+    className?: string;
+    accounts?: NavAccountType[];
+    selectedAccountId?: string;
+    onCloseDropdown?: () => void;
+    isDropdownOpen?: boolean;
+    onDropdownLockChange?: (locked: boolean) => void;
+}) => {
     const router = useRouter();
     const focusManager = useFocusManager();
     const dialogRef = useRef<HTMLDivElement>(null);
+    const { isPlatformOwner } = useAdmin();
+    const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
     const onKeyDown = useCallback(
         (e: KeyboardEvent) => {
@@ -81,55 +93,84 @@ export const NavAccountMenu = ({
         };
     }, [onKeyDown]);
 
+    useEffect(() => {
+        if (isProfileModalOpen) {
+            onCloseDropdown?.();
+            onDropdownLockChange?.(true);
+        } else {
+            // Ensure dropdown is closed when modal closes
+            onCloseDropdown?.();
+            // Keep dropdown locked longer to prevent automatic reopen when focus returns
+            // Use a longer delay to ensure focus has settled and any async operations complete
+            const unlockTimer = setTimeout(() => {
+                onDropdownLockChange?.(false);
+            }, 600);
+            return () => clearTimeout(unlockTimer);
+        }
+    }, [isProfileModalOpen, onCloseDropdown, onDropdownLockChange]);
+
     return (
         <AriaDialog
             {...dialogProps}
             ref={dialogRef}
-            className={cx("w-66 rounded-xl bg-secondary_alt shadow-lg ring ring-secondary_alt outline-hidden", className)}
+            className={cx(
+                "w-66 rounded-xl bg-secondary_alt shadow-lg ring ring-secondary_alt outline-hidden",
+                isProfileModalOpen && "hidden",
+                className,
+            )}
         >
             <div className="rounded-xl bg-primary ring-1 ring-secondary">
                 <div className="flex flex-col gap-0.5 py-1.5">
-                    <NavAccountCardMenuItem label="View profile" icon={User01} shortcut="⌘K->P" />
-                    <NavAccountCardMenuItem label="Account settings" icon={Settings01} shortcut="⌘S" />
-                    <NavAccountCardMenuItem label="Documentation" icon={BookOpen01} />
-                </div>
-                <div className="flex flex-col gap-0.5 border-t border-secondary py-1.5">
-                    <div className="px-3 pt-1.5 pb-1 text-xs font-semibold text-tertiary">Switch account</div>
-
-                    <div className="flex flex-col gap-0.5 px-1.5">
-                        {placeholderAccounts.map((account) => (
-                            <button
-                                key={account.id}
-                                className={cx(
-                                    "relative w-full cursor-pointer rounded-md px-2 py-1.5 text-left outline-focus-ring hover:bg-primary_hover focus:z-10 focus-visible:outline-2 focus-visible:outline-offset-2",
-                                    account.id === selectedAccountId && "bg-primary_hover",
-                                )}
-                            >
-                                <AvatarLabelGroup status="online" size="md" src={account.avatar} title={account.name} subtitle={account.email} />
-
-                                <RadioButtonBase isSelected={account.id === selectedAccountId} className="absolute top-2 right-2" />
-                            </button>
-                        ))}
-                    </div>
-                </div>
-                <div className="flex flex-col gap-2 px-2 pt-0.5 pb-2">
-                    <Button iconLeading={Plus} color="secondary" size="sm">
-                        Add account
-                    </Button>
+                    <NavAccountCardMenuItem
+                        label="View profile" 
+                        icon={User01}
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            // Close the dropdown first
+                            if (onCloseDropdown) {
+                                onCloseDropdown();
+                            }
+                            // Wait for dropdown closing animation to complete (150ms) plus buffer, then open modal
+                            setTimeout(() => {
+                                setIsProfileModalOpen(true);
+                            }, 250);
+                        }}
+                    />
+                    <NavAccountCardMenuItem 
+                        label={isPlatformOwner ? "Admin area" : "Account settings"} 
+                        icon={Settings01}
+                        onClick={() => {
+                            if (isPlatformOwner) {
+                                router.push("/admin");
+                            }
+                        }}
+                    />
                 </div>
             </div>
 
             <div className="pt-1 pb-1.5">
                 <NavAccountCardMenuItem 
-                    label="Sign out" 
-                    icon={LogOut01} 
-                    shortcut="⌥⇧Q"
+                    label="Log out" 
+                    icon={LogOut01}
                     onClick={async () => {
                         await signOut();
                         router.push("/login");
                     }}
                 />
             </div>
+            
+            <ProfileSettingsModal 
+                isOpen={isProfileModalOpen} 
+                onOpenChange={(nextOpen) => {
+                    if (!nextOpen) {
+                        // When closing modal, immediately close dropdown and lock it
+                        onCloseDropdown?.();
+                        onDropdownLockChange?.(true);
+                    }
+                    setIsProfileModalOpen(nextOpen);
+                }} 
+            />
         </AriaDialog>
     );
 };
@@ -176,6 +217,8 @@ export const NavAccountCard = ({
 }) => {
     const triggerRef = useRef<HTMLDivElement>(null);
     const isDesktop = useBreakpoint("lg");
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isDropdownLocked, setIsDropdownLocked] = useState(false);
 
     const selectedAccount = placeholderAccounts.find((account) => account.id === selectedAccountId);
 
@@ -195,7 +238,15 @@ export const NavAccountCard = ({
             />
 
             <div className="absolute top-1.5 right-1.5">
-                <AriaDialogTrigger>
+                <AriaDialogTrigger
+                    isOpen={isDropdownOpen}
+                    onOpenChange={(nextOpen) => {
+                        if (nextOpen && isDropdownLocked) {
+                            return;
+                        }
+                        setIsDropdownOpen(nextOpen);
+                    }}
+                >
                     <AriaButton className="flex cursor-pointer items-center justify-center rounded-md p-1.5 text-fg-quaternary outline-focus-ring transition duration-100 ease-linear hover:bg-primary_hover hover:text-fg-quaternary_hover focus-visible:outline-2 focus-visible:outline-offset-2 pressed:bg-primary_hover pressed:text-fg-quaternary_hover">
                         <ChevronSelectorVertical className="size-4 shrink-0" />
                     </AriaButton>
@@ -213,7 +264,13 @@ export const NavAccountCard = ({
                             )
                         }
                     >
-                        <NavAccountMenu selectedAccountId={selectedAccountId} accounts={items} />
+                        <NavAccountMenu 
+                            selectedAccountId={selectedAccountId} 
+                            accounts={items}
+                            isDropdownOpen={isDropdownOpen}
+                            onCloseDropdown={() => setIsDropdownOpen(false)}
+                            onDropdownLockChange={setIsDropdownLocked}
+                        />
                     </AriaPopover>
                 </AriaDialogTrigger>
             </div>

@@ -26,3 +26,14 @@ export const getFileUrl = query({
     return await ctx.storage.getUrl(args.storageId);
   },
 });
+
+/**
+ * Get file URL from storage ID (mutation version for use in submit handlers)
+ */
+export const getFileUrlMutation = mutation({
+  args: { storageId: v.id("_storage") },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, args) => {
+    return await ctx.storage.getUrl(args.storageId);
+  },
+});

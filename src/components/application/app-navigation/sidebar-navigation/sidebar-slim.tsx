@@ -36,6 +36,8 @@ export const SidebarNavigationSlim = ({ activeUrl, items, footerItems = [], hide
     const activeItem = [...items, ...footerItems].find((item) => item.href === activeUrl || item.items?.some((subItem) => subItem.href === activeUrl));
     const [currentItem, setCurrentItem] = useState(activeItem || items[1]);
     const [isHovering, setIsHovering] = useState(false);
+    const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+    const [isDropdownLocked, setIsDropdownLocked] = useState(false);
 
     const isSecondarySidebarVisible = isHovering && Boolean(currentItem.items?.length);
 
@@ -94,7 +96,15 @@ export const SidebarNavigationSlim = ({ activeUrl, items, footerItems = [], hide
                         </ul>
                     )}
 
-                    <AriaDialogTrigger>
+                    <AriaDialogTrigger
+                        isOpen={isDropdownOpen}
+                        onOpenChange={(nextOpen) => {
+                            if (nextOpen && isDropdownLocked) {
+                                return;
+                            }
+                            setIsDropdownOpen(nextOpen);
+                        }}
+                    >
                         <AriaButton
                             className={({ isPressed, isFocused }) =>
                                 cx("group relative inline-flex rounded-full", (isPressed || isFocused) && "outline-2 outline-offset-2 outline-focus-ring")
@@ -116,7 +126,11 @@ export const SidebarNavigationSlim = ({ activeUrl, items, footerItems = [], hide
                                 )
                             }
                         >
-                            <NavAccountMenu />
+                            <NavAccountMenu 
+                                isDropdownOpen={isDropdownOpen}
+                                onCloseDropdown={() => setIsDropdownOpen(false)} 
+                                onDropdownLockChange={setIsDropdownLocked}
+                            />
                         </AriaPopover>
                     </AriaDialogTrigger>
                 </div>
