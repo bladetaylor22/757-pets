@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useRef } from "react";
 import { FilterLines, Monitor04, SearchLg, UserPlus01, Users01, XClose } from "@untitledui/icons";
 import type { SortDescriptor } from "react-aria-components";
-import { useQuery } from "convex/react";
+import { useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { ProtectedAdminRoute } from "@/components/auth/protected-admin-route";
 import { HeaderNavigationBase } from "@/components/application/app-navigation/header-navigation";
@@ -20,8 +20,59 @@ function AdminDashboardContent() {
     const [searchQuery, setSearchQuery] = useState("");
 
     const stats = useQuery(api.admin.getPlatformStats);
-    const platformOwners = useQuery(api.admin.getPlatformOwners);
+    const platformOwnersBase = useQuery(api.admin.getPlatformOwners);
+    const getPlatformOwnersWithNames = useAction(api.admin.getPlatformOwnersWithNames);
     const currentUser = useQuery(api.admin.getCurrentAdminUser);
+    type PlatformOwner = {
+        _id: string;
+        userId: string;
+        userName: string;
+        userEmail: string | null;
+        createdAt: number;
+    };
+    const [platformOwners, setPlatformOwners] = useState<PlatformOwner[]>([]);
+    const [isLoadingNames, setIsLoadingNames] = useState(false);
+    const lastOwnersKeyRef = useRef<string | null>(null);
+
+    // Fetch user names when base data is available
+    useEffect(() => {
+        if (!platformOwnersBase) return;
+
+        const ownersKey = platformOwnersBase
+            .map((owner: { userId: string; createdAt?: number }) => `${owner.userId}:${owner.createdAt ?? 0}`)
+            .join("|");
+
+        if (lastOwnersKeyRef.current === ownersKey) return;
+        lastOwnersKeyRef.current = ownersKey;
+
+        if (platformOwnersBase.length === 0) {
+            setPlatformOwners([]);
+            return;
+        }
+
+        setIsLoadingNames(true);
+        getPlatformOwnersWithNames()
+            .then((ownersWithNames) => {
+                setPlatformOwners(ownersWithNames || []);
+            })
+            .catch((error) => {
+                console.error("Error fetching platform owners with names:", error);
+                // Fallback to base data
+                type BaseOwner = {
+                    _id: string;
+                    userId: string;
+                    createdAt: number;
+                };
+                setPlatformOwners(platformOwnersBase.map((owner: BaseOwner) => ({
+                    ...owner,
+                    userName: owner.userId,
+                    userEmail: null,
+                })));
+            })
+            .finally(() => {
+                setIsLoadingNames(false);
+            });
+    }, [platformOwnersBase, getPlatformOwnersWithNames]);
 
     // Format numbers with commas
     const formatNumber = (num: number) => {
@@ -39,7 +90,9 @@ function AdminDashboardContent() {
             const query = searchQuery.toLowerCase();
             filtered = platformOwners.filter(
                 (owner) =>
-                    owner.userId.toLowerCase().includes(query)
+                    (owner.userName || "").toLowerCase().includes(query) ||
+                    owner.userId.toLowerCase().includes(query) ||
+                    (owner.userEmail && owner.userEmail.toLowerCase().includes(query))
             );
         }
 
@@ -47,17 +100,25 @@ function AdminDashboardContent() {
         if (!sortDescriptor) return filtered;
 
         return filtered.toSorted((a, b) => {
-            const first: string | number = a[sortDescriptor.column as keyof typeof a] as string | number;
-            const second: string | number = b[sortDescriptor.column as keyof typeof b] as string | number;
+            // Handle userName sorting
+            if (sortDescriptor.column === "userName") {
+                const aName = a.userName || a.userId || "";
+                const bName = b.userName || b.userId || "";
+                const result = aName.localeCompare(bName);
+                return sortDescriptor.direction === "ascending" ? result : -result;
+            }
 
             // Handle createdAt (numbers)
             if (sortDescriptor.column === "createdAt") {
                 return sortDescriptor.direction === "ascending"
-                    ? (first as number) - (second as number)
-                    : (second as number) - (first as number);
+                    ? a.createdAt - b.createdAt
+                    : b.createdAt - a.createdAt;
             }
 
-            // Handle strings
+            // Handle other string fields
+            const first: string | number = a[sortDescriptor.column as keyof typeof a] as string | number;
+            const second: string | number = b[sortDescriptor.column as keyof typeof b] as string | number;
+
             if (typeof first === "string" && typeof second === "string") {
                 const result = first.localeCompare(second);
                 return sortDescriptor.direction === "ascending" ? result : -result;
@@ -67,7 +128,7 @@ function AdminDashboardContent() {
         });
     }, [platformOwners, searchQuery, sortDescriptor]);
 
-    const isLoading = stats === undefined || platformOwners === undefined || currentUser === undefined;
+    const isLoading = stats === undefined || platformOwnersBase === undefined || currentUser === undefined || isLoadingNames;
 
     if (isLoading) {
         return (
@@ -200,7 +261,7 @@ function AdminDashboardContent() {
                                 onSortChange={setSortDescriptor}
                             >
                                 <Table.Header className="bg-primary">
-                                    <Table.Head id="userId" isRowHeader allowsSorting label="User ID" className="w-full" />
+                                    <Table.Head id="userName" isRowHeader allowsSorting label="User" className="w-full" />
                                     <Table.Head id="createdAt" allowsSorting label="Added Date" />
                                     <Table.Head id="status" label="Status" />
                                 </Table.Header>
@@ -213,16 +274,16 @@ function AdminDashboardContent() {
                                                         size="md"
                                                         placeholder={
                                                             <span className="flex items-center justify-center text-xs font-semibold text-quaternary">
-                                                                {owner.userId.charAt(0).toUpperCase()}
+                                                                {(owner.userName || owner.userId || "?").charAt(0).toUpperCase()}
                                                             </span>
                                                         }
                                                     />
                                                     <div>
                                                         <p className="text-sm font-medium text-primary">
-                                                            {owner.userId}
+                                                            {owner.userName || owner.userId || "Unknown User"}
                                                         </p>
                                                         <p className="text-sm text-tertiary">
-                                                            Platform Owner
+                                                            {owner.userEmail || "Platform Owner"}
                                                         </p>
                                                     </div>
                                                 </div>

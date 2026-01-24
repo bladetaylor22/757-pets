@@ -1,9 +1,10 @@
-import { query, internalMutation } from "./_generated/server";
+import { query, internalMutation, internalQuery, action } from "./_generated/server";
 import { v } from "convex/values";
 import { ConvexError } from "convex/values";
 import { requirePlatformOwner, isPlatformOwner } from "./admin/utils";
 import { getCurrentUserId } from "./pets/utils";
 import { authComponent } from "./auth";
+import { internal, api, components } from "./_generated/api";
 
 // ============================================================================
 // QUERIES
@@ -25,7 +26,8 @@ export const isCurrentUserPlatformOwner = query({
 
 /**
  * Get all platform owners (admin only)
- * Returns list of platform owner records
+ * Returns list of platform owner records with user names
+ * Note: User names are fetched via a separate action call due to Better Auth internal API limitations
  */
 export const getPlatformOwners = query({
   args: {},
@@ -36,28 +38,12 @@ export const getPlatformOwners = query({
       .query("platformOwners")
       .collect();
     
-    // Enrich with user data from Better Auth
-    const ownersWithUserData = await Promise.all(
-      owners.map(async (owner) => {
-        try {
-          // Try to get user data - Better Auth users are stored in component tables
-          // We'll return the owner record with userId for now
-          return {
-            _id: owner._id,
-            userId: owner.userId,
-            createdAt: owner.createdAt,
-          };
-        } catch {
-          return {
-            _id: owner._id,
-            userId: owner.userId,
-            createdAt: owner.createdAt,
-          };
-        }
-      })
-    );
-    
-    return ownersWithUserData;
+    // Return owners - user names will be enriched by getPlatformOwnersWithNames action
+    return owners.map((owner) => ({
+      _id: owner._id,
+      userId: owner.userId,
+      createdAt: owner.createdAt,
+    }));
   },
 });
 
@@ -160,6 +146,127 @@ export const getCurrentAdminUser = query({
       ...user,
       isPlatformOwner: isOwner,
     };
+  },
+});
+
+// ============================================================================
+// ACTIONS
+// ============================================================================
+
+/**
+ * Get all platform owners with user names enriched from Better Auth
+ * This is an action because we need to call internal Better Auth queries
+ */
+export const getPlatformOwnersWithNames = action({
+  args: {},
+  handler: async (ctx): Promise<Array<{
+    _id: string;
+    userId: string;
+    userName: string;
+    userEmail: string | null;
+    createdAt: number;
+  }>> => {
+    // Check authorization - use regular query API, not internal
+    const isOwner = await ctx.runQuery(api.admin.isCurrentUserPlatformOwner);
+    if (!isOwner) {
+      throw new ConvexError({
+        code: "UNAUTHORIZED",
+        message: "Platform owner access required",
+      });
+    }
+    
+    // Get platform owners
+    const owners: Array<{
+      _id: string;
+      userId: string;
+      createdAt: number;
+    }> = await ctx.runQuery(internal.admin._getPlatformOwnersList);
+    
+    // Enrich with Better Auth user data
+    const ownersWithUserData: Array<{
+      _id: string;
+      userId: string;
+      userName: string;
+      userEmail: string | null;
+      createdAt: number;
+    }> = await Promise.all(
+      owners.map(async (owner: {
+        _id: string;
+        userId: string;
+        createdAt: number;
+      }) => {
+        try {
+          // Use internal query to get Better Auth user.
+          // The stored userId may map to either `userId` or `_id` in Better Auth.
+          type BetterAuthUser = {
+            name?: string | null;
+            email?: string | null;
+            userId?: string | null;
+            _id?: string | null;
+          } | null;
+          let user: BetterAuthUser = await ctx.runQuery(components.betterAuth.adapter.findOne, {
+            model: "user",
+            where: [
+              {
+                field: "userId",
+                operator: "eq",
+                value: owner.userId,
+              },
+            ],
+          });
+
+          if (!user) {
+            user = await ctx.runQuery(components.betterAuth.adapter.findOne, {
+              model: "user",
+              where: [
+                {
+                  field: "_id",
+                  operator: "eq",
+                  value: owner.userId,
+                },
+              ],
+            });
+          }
+          
+          return {
+            _id: owner._id,
+            userId: owner.userId,
+            userName: user?.name || user?.email || owner.userId,
+            userEmail: user?.email || null,
+            createdAt: owner.createdAt,
+          };
+        } catch (error) {
+          console.error("Error fetching user for platform owner:", owner.userId, error);
+          return {
+            _id: owner._id,
+            userId: owner.userId,
+            userName: owner.userId,
+            userEmail: null,
+            createdAt: owner.createdAt,
+          };
+        }
+      })
+    );
+    
+    return ownersWithUserData;
+  },
+});
+
+// ============================================================================
+// INTERNAL QUERIES
+// ============================================================================
+
+/**
+ * Internal query to get platform owners list
+ */
+export const _getPlatformOwnersList = internalQuery({
+  args: {},
+  handler: async (ctx): Promise<Array<{
+    _id: string;
+    userId: string;
+    createdAt: number;
+  }>> => {
+    return await ctx.db.query("platformOwners").collect();
   },
 });
 
